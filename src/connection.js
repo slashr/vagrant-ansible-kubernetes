@@ -1,5 +1,7 @@
 // connection.js
 const mongoose = require("mongoose");
+const Time = require("./timestamp.model"); 
+
 const DB_PORT = process.env.DB_PORT
 const dbUrl = `mongodb://mongo:${DB_PORT}/mongo-test`;
 const dbConnection = () => {
