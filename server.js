@@ -1,16 +1,19 @@
-'use strict';
-
 const express = require('express');
-
-// Constants
-const PORT = 8080;
-const HOST = '0.0.0.0';
-
-// App
 const app = express();
+const dbConnection = require("./src/connection");
+
+//Port config
+const PORT = 8080;
+
+//Timestamp
 app.get('/', (req, res) => {
   res.send(`${Date.now()}`);
 });
 
-app.listen(PORT, HOST);
-console.log(`Live on http://${HOST}:${PORT}`);
+//Connect to DB
+app.listen(PORT, function() {
+ console.log(`Listening on ${PORT}`);
+dbConnection().then(() => {
+ console.log("Connected to Database");
+ });
+});
