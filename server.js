@@ -3,7 +3,8 @@ const app = express();
 const dbConnection = require("./src/connection");
 
 //Port config
-const PORT = 8080;
+//const PORT = 8080;
+const PORT = process.env.PORT;
 
 //Timestamp
 app.get('/', (req, res) => {
