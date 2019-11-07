@@ -32,3 +32,16 @@ spec:
   - protocol: TCP
     targetPort: 27017
     port: 27017
+---
+apiVersion: autoscaling/v1
+kind: HorizontalPodAutoscaler
+metadata:
+    name: db
+spec:
+    scaleTargetRef:
+      apiVersion: extensions/v1beta1
+      kind: Deployment
+      name: mongo
+    minReplicas: 1
+    maxReplicas: 1
+    targetCPUUtilizationPercentage: 90
