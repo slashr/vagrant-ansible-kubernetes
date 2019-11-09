@@ -1,0 +1,95 @@
+- hosts: node-*
+  become: yes
+  gather_facts: true
+  tasks:
+    - name: create the 'ubuntu' user
+      user: name=ubuntu append=yes state=present createhome=yes shell=/bin/bash
+
+    - name: allow 'ubuntu' to have passwordless sudo
+      lineinfile:
+        dest: /etc/sudoers
+        line: 'ubuntu ALL=(ALL) NOPASSWD: ALL'
+        validate: 'visudo -cf %s'
+
+    - name: set up authorized keys for the ubuntu user
+      authorized_key: user=ubuntu key="{{item}}"
+      with_file:
+        - ~/.ssh/id_rsa.pub
+
+    - name: 'Install docker and role dependencies'
+      become: yes
+      apt:
+        name: "{{item}}"
+        state: present
+        install_recommends: false
+      with_items:
+        - "apt-transport-https"
+        - "ca-certificates"
+        - "software-properties-common"
+        - "cron"
+
+    - name: install Docker
+      apt:
+        name: docker.io
+        state: present
+        update_cache: true
+
+    - name: Remove swapfile from /etc/fstab
+      mount:
+        name: "{{ item }}"
+        fstype: swap
+        state: absent
+      with_items:
+        - swap
+        - none
+
+    - name: Disable swap
+      command: swapoff -a
+      when: ansible_swaptotal_mb > 0
+    - name: Add an apt signing key for Kubernetes
+      apt_key:
+        url: https://packages.cloud.google.com/apt/doc/apt-key.gpg
+        state: present
+        
+    - name: add Kubernetes apt-key
+      apt_key:
+        url: https://packages.cloud.google.com/apt/doc/apt-key.gpg
+        state: present
+
+    - name: add Kubernetes' APT repository
+      apt_repository:
+       repo: deb http://apt.kubernetes.io/ kubernetes-xenial main
+       state: present
+       filename: 'kubernetes'
+
+    - name: install kubelet
+      apt:
+        name: kubelet=1.14.0-00
+        state: present
+        update_cache: true
+
+    - name: install kubeadm
+      apt:
+        name: kubeadm=1.14.0-00
+        state: present
+
+    - name: 'Configure cgroup driver used by kubelet on Master node'
+      become: yes
+      replace:
+        path: /etc/systemd/system/kubelet.service.d/10-kubeadm.conf
+        regexp: 'cgroup-driver=systemd'
+        replace: 'cgroup-driver="cgroupfs"'
+        backup: yes
+
+    - name: 'Reload configs and restart kubelet'
+      become: yes
+      systemd:
+        state: restarted
+        daemon_reload: yes
+        name: kubelet
+
+    - name: join cluster
+      shell: "{{ hostvars['master'].join_command }} >> node_joined.txt"
+      args:
+        chdir: $HOME
+        creates: node_joined.txt
